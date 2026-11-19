@@ -92,9 +92,11 @@ const pgDb = envConfig.POSTGRES_DB || 'careeros_dev_db';
 console.log('--- Provisioning Isolated Test Database: careeros_test_db ---');
 
 // 4. Create database if not exists via PostgreSQL container command
+const composeFile = path.join(rootDir, 'docker-compose.yml');
 try {
-  const checkCmd = `docker compose exec -T postgres psql -h 127.0.0.1 -p 5432 -U "${pgUser}" -d "${pgDb}" -tAc "SELECT 1 FROM pg_database WHERE datname = 'careeros_test_db';"`;
+  const checkCmd = `docker compose --file "${composeFile}" exec -T postgres psql -h 127.0.0.1 -p 5432 -U "${pgUser}" -d "${pgDb}" -tAc "SELECT 1 FROM pg_database WHERE datname = 'careeros_test_db';"`;
   const exists = execSync(checkCmd, {
+    cwd: rootDir,
     env: { ...process.env, PGPASSWORD: pgPass },
     encoding: 'utf8',
   }).trim();
@@ -102,8 +104,9 @@ try {
   if (!exists.includes('1')) {
     console.log(' Creating "careeros_test_db"...');
     execSync(
-      `docker compose exec -T postgres psql -h 127.0.0.1 -p 5432 -U "${pgUser}" -d "${pgDb}" -c "CREATE DATABASE careeros_test_db;"`,
+      `docker compose --file "${composeFile}" exec -T postgres psql -h 127.0.0.1 -p 5432 -U "${pgUser}" -d "${pgDb}" -c "CREATE DATABASE careeros_test_db;"`,
       {
+        cwd: rootDir,
         env: { ...process.env, PGPASSWORD: pgPass },
         stdio: 'inherit',
       },
