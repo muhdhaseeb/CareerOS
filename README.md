@@ -121,13 +121,14 @@ CareerOS enforces strict automated quality gates on every push and pull request 
 
 1. **Dependency Installation:** `pnpm install --frozen-lockfile` ensures strict lockfile integrity.
 2. **Prisma Client Generation:** `pnpm db:generate` generates `@prisma/client` types before any linting, typechecking, or compilation steps.
-3. **Gate 1 — Formatting:** `pnpm format:check` validates Prettier formatting across all files.
-4. **Gate 2 — Linting:** `pnpm lint` executes ESLint across the monorepo with strict TypeScript rules.
-5. **Gate 3 — Type Checking:** `pnpm typecheck` validates TypeScript across all packages and applications with zero errors.
-6. **Gate 4 — Security Audit:** `pnpm audit --prod --audit-level=high` blocks on high or critical vulnerabilities in production runtime dependencies.
-7. **Service Isolation & Healthcheck:** Spins up *only* containerized PostgreSQL on port `5433` using disposable CI credentials; Redis and MinIO remain unstarted. A bounded readiness loop polls `pg_isready` before running migrations.
-8. **Gate 5 — Automated Tests:** `pnpm test` provisions `careeros_test_db`, applies migrations, and runs unit and database integration tests.
-9. **Gate 6 — Build Verification:** `pnpm build` compiles all packages and applications in topological order.
+3. **Internal Package Compilation:** `pnpm -r --filter "./packages/*" build` compiles shared workspace packages (`contracts`, `ui`, `utils`, `database`) to generate their `./dist/index.d.ts` declarations.
+4. **Gate 1 — Formatting:** `pnpm format:check` validates Prettier formatting across all files.
+5. **Gate 2 — Linting:** `pnpm lint` executes ESLint across the monorepo with strict TypeScript rules.
+6. **Gate 3 — Type Checking:** `pnpm typecheck` validates TypeScript across all packages and applications with zero errors.
+7. **Gate 4 — Security Audit:** `pnpm audit --prod --audit-level=high` blocks on high or critical vulnerabilities in production runtime dependencies.
+8. **Service Isolation & Healthcheck:** Spins up *only* containerized PostgreSQL on port `5433` using disposable CI credentials; Redis and MinIO remain unstarted. A bounded readiness loop polls `pg_isready` before running migrations.
+9. **Gate 5 — Automated Tests:** `pnpm test` provisions `careeros_test_db`, applies migrations, and runs unit and database integration tests.
+10. **Gate 6 — Build Verification:** `pnpm build` compiles all packages and applications in topological order.
 
 ### Dependency Security Audit Policy
 

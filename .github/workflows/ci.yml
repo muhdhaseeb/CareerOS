@@ -43,6 +43,9 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm db:generate
 
+      - name: Build internal packages
+        run: pnpm -r --filter "./packages/*" build
+
       - name: Gate 1 - Code Formatting Check
         run: pnpm format:check
 
