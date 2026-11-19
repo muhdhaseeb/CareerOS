@@ -34,11 +34,46 @@ careeros/
 ### Prerequisites
 - Node.js >= 20.0.0
 - pnpm >= 9.0.0
+- Docker Desktop with WSL2 backend (for local development infrastructure)
+
+### Local Infrastructure Setup
+
+CareerOS uses Docker Compose for local infrastructure services with persistent volumes:
+- **PostgreSQL 16.8**: Bound to `127.0.0.1:5433` (container port 5432). Note: Host port `5433` is used to prevent collisions with native PostgreSQL installations running on `5432`.
+- **Redis 7.4.2**: Bound to `127.0.0.1:6379` with mandatory password authentication.
+- **MinIO S3**: Bound to `127.0.0.1:9000` (S3 API) and `127.0.0.1:9001` (Web Console).
+
+> [!NOTE]
+> **Local Development Note on MinIO:**
+> The local MinIO container is configured with `user: '0:0'` solely to grant write access to Docker named volumes mounted by the Windows/WSL2 Docker Desktop engine. This is a local-development-only concession. In production, CareerOS connects directly to managed S3-compatible object storage (e.g., AWS S3 or Cloudflare R2) using non-root service identities and scoped IAM credentials, as specified in `ARCHITECTURE.md`.
+
+1. Copy `.env.example` to `.env` and set your local credentials:
+   ```bash
+   cp .env.example .env
+   ```
+2. Start infrastructure containers:
+   ```bash
+   pnpm infra:up
+   ```
+3. Verify authenticated service connectivity:
+   ```bash
+   pnpm infra:verify
+   ```
+4. Stop infrastructure containers (preserves data volumes):
+   ```bash
+   pnpm infra:down
+   ```
 
 ### Commands
 ```bash
 # Install dependencies
 pnpm install
+
+# Start local infrastructure (Postgres, Redis, MinIO)
+pnpm infra:up
+
+# Verify infrastructure authentication and connectivity
+pnpm infra:verify
 
 # Build all packages and applications in topological order
 pnpm build

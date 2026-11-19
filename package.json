@@ -13,6 +13,10 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "test": "pnpm -r test",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:verify": "node ./infrastructure/scripts/verify-infrastructure.mjs",
+    "infra:test-persistence": "node ./infrastructure/scripts/test-persistence.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md}\""
   },
