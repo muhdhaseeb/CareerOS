@@ -17,6 +17,9 @@
     "infra:down": "docker compose down",
     "infra:verify": "node ./infrastructure/scripts/verify-infrastructure.mjs",
     "infra:test-persistence": "node ./infrastructure/scripts/test-persistence.mjs",
+    "db:generate": "pnpm --filter @careeros/database generate",
+    "db:migrate": "pnpm --filter @careeros/database migrate:dev",
+    "db:seed": "pnpm --filter @careeros/database seed",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,mjs,json,md}\""
   },

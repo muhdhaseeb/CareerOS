@@ -1,5 +1,9 @@
 /**
- * CareerOS — Database Package Stub
- * Reserved for Prisma client and schema in TASK-003.
+ * CareerOS — Database Package
+ * Exports Prisma Client, database model types, and target safety validators.
+ * Adheres strictly to single-ownership lifecycle: consumers instantiate and close their own client.
  */
-export const DATABASE_PACKAGE_INITIALIZED = true;
+
+export * from '@prisma/client';
+export { PrismaClient } from '@prisma/client';
+export { validateDatabaseTarget } from './safety-guard';

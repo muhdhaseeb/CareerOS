@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@careeros/contracts": "workspace:*",
+    "@careeros/database": "workspace:*",
     "@careeros/utils": "workspace:*"
   },
   "devDependencies": {

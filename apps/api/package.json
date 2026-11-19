@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@careeros/contracts": "workspace:*",
+    "@careeros/database": "workspace:*",
     "@careeros/utils": "workspace:*",
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",

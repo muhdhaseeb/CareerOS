@@ -64,6 +64,23 @@ CareerOS uses Docker Compose for local infrastructure services with persistent v
    pnpm infra:down
    ```
 
+### Database Foundation & Migrations
+
+CareerOS uses Prisma in `@careeros/database` configured with strict target safety guards:
+- **Port Isolation & Guard:** Local development and testing are strictly restricted to host port `5433` (`careeros_dev_db` or `careeros_local_dev`). Connecting to port `5432` is prohibited in code to protect native PostgreSQL installations.
+- **Isolated Testing:** Integration tests run exclusively against `careeros_test_db`, provisioned and migrated in complete isolation from development data.
+- **Guarded Workflows:**
+  ```bash
+  # Generate Prisma Client via guarded runner
+  pnpm db:generate
+
+  # Apply versioned database migrations
+  pnpm db:migrate
+
+  # Run idempotent seed verification
+  pnpm db:seed
+  ```
+
 ### Commands
 ```bash
 # Install dependencies
