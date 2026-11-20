@@ -1,6 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { Controller, Get, HttpCode, HttpStatus, Res, INestApplication } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Res,
+  INestApplication,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import request from 'supertest';
 import { BypassEnvelope } from '../src/common/decorators/bypass-envelope.decorator';
@@ -37,6 +45,20 @@ class ContractTestController {
     throw new Error(
       'Database connection string: postgres://admin:secretPass@internal-db:5432 failed',
     );
+  }
+
+  @Get('unrelated-503')
+  getUnrelated503(): void {
+    throw new ServiceUnavailableException({
+      message: 'Third-party gateway timeout',
+      secretApiKey: 'SK_SECRET_PROD_KEY_987654321',
+      checks: {
+        paymentGateway: 'down',
+      },
+      internalConfig: {
+        databaseUrl: 'postgres://app:secret123@db.internal:5432/prod',
+      },
+    });
   }
 }
 
@@ -130,5 +152,32 @@ describe('API Contract & Response Envelope Standards (Integration)', () => {
     expect(bodyStr).not.toContain('internal-db');
     expect(res.body.stack).toBeUndefined();
     expect(res.body.error.details).toBeUndefined();
+  });
+
+  it('should format unrelated 503 exceptions with standard error contract and never leak sensitive fields', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/v1/contract-test/unrelated-503')
+      .expect(503);
+
+    expect(res.body).toEqual({
+      success: false,
+      error: {
+        code: 'SERVICE_UNAVAILABLE',
+        message: 'Third-party gateway timeout',
+      },
+      meta: {
+        timestamp: expect.any(String),
+        correlationId: expect.any(String),
+      },
+    });
+
+    const bodyStr = JSON.stringify(res.body);
+    expect(bodyStr).not.toContain('SK_SECRET_PROD_KEY_987654321');
+    expect(bodyStr).not.toContain('secret123');
+    expect(bodyStr).not.toContain('db.internal');
+    expect(bodyStr).not.toContain('paymentGateway');
+    expect(res.body.checks).toBeUndefined();
+    expect(res.body.secretApiKey).toBeUndefined();
+    expect(res.body.internalConfig).toBeUndefined();
   });
 });

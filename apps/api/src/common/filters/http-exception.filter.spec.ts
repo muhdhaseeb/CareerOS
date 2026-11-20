@@ -8,6 +8,7 @@ import {
 import type { Response } from 'express';
 import { HttpExceptionFilter } from './http-exception.filter';
 import { RequestContext } from '../context/request-context';
+import { ReadinessException } from '../exceptions/readiness.exception';
 
 describe('HttpExceptionFilter', () => {
   const filter = new HttpExceptionFilter();
@@ -80,20 +81,78 @@ describe('HttpExceptionFilter', () => {
     });
   });
 
-  it('should preserve ServiceUnavailableException with checks (Readiness failure) without mutating shape', () => {
+  it('should preserve trusted ReadinessException without mutating shape', () => {
     const { hostMock, statusMock, jsonMock } = createHostMock();
     const readinessFailure = {
-      status: 'error',
+      status: 'error' as const,
       timestamp: '2026-11-20T21:00:00.000Z',
       checks: {
-        database: 'down',
+        database: 'down' as const,
       },
     };
 
-    filter.catch(new ServiceUnavailableException(readinessFailure), hostMock);
+    filter.catch(new ReadinessException(readinessFailure), hostMock);
 
     expect(statusMock).toHaveBeenCalledWith(503);
     expect(jsonMock).toHaveBeenCalledWith(readinessFailure);
+  });
+
+  it('should format unrelated ServiceUnavailableException containing sensitive fields into standardized ApiErrorResponse', () => {
+    const { hostMock, statusMock, jsonMock } = createHostMock();
+    const unrelatedException = new ServiceUnavailableException({
+      message: 'Payment gateway timeout',
+      secretToken: 'sk_live_secret_key_12345',
+      checks: { paymentGateway: 'down' },
+      internalHost: 'internal-cluster.local',
+    });
+
+    RequestContext.run({ correlationId: 'test-unrelated-503' }, () => {
+      filter.catch(unrelatedException, hostMock);
+    });
+
+    expect(statusMock).toHaveBeenCalledWith(503);
+    expect(jsonMock).toHaveBeenCalledWith({
+      success: false,
+      error: {
+        code: 'SERVICE_UNAVAILABLE',
+        message: 'Payment gateway timeout',
+      },
+      meta: {
+        timestamp: expect.any(String),
+        correlationId: 'test-unrelated-503',
+      },
+    });
+
+    const firstCall = jsonMock.mock.calls[0];
+    expect(firstCall).toBeDefined();
+    const responsePayload = firstCall?.[0] as Record<string, unknown>;
+    const bodyStr = JSON.stringify(responsePayload);
+    expect(bodyStr).not.toContain('sk_live_secret_key_12345');
+    expect(bodyStr).not.toContain('internal-cluster.local');
+    expect(responsePayload?.checks).toBeUndefined();
+    expect(responsePayload?.secretToken).toBeUndefined();
+  });
+
+  it('should redact secrets in error messages', () => {
+    const { hostMock, statusMock, jsonMock } = createHostMock();
+    const ex = new BadRequestException('Invalid authorization token: Bearer mySecretToken123');
+
+    RequestContext.run({ correlationId: 'test-redact-corr' }, () => {
+      filter.catch(ex, hostMock);
+    });
+
+    expect(statusMock).toHaveBeenCalledWith(400);
+    expect(jsonMock).toHaveBeenCalledWith({
+      success: false,
+      error: {
+        code: 'BAD_REQUEST',
+        message: 'Invalid authorization token: Bearer [REDACTED]',
+      },
+      meta: {
+        timestamp: expect.any(String),
+        correlationId: 'test-redact-corr',
+      },
+    });
   });
 
   it('should intercept unhandled errors and return sanitized 500 without leaking stack traces', () => {

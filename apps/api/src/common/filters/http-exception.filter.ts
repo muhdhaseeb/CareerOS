@@ -3,6 +3,8 @@ import type { Response } from 'express';
 import type { ApiErrorDetail, ApiErrorResponse } from '@careeros/contracts';
 import { RequestContext } from '../context/request-context';
 import { StructuredLogger } from '../logger/structured.logger';
+import { ReadinessException } from '../exceptions/readiness.exception';
+import { SecretRedactor } from '../logger/secret-redactor';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -15,20 +17,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const correlationId = RequestContext.getCorrelationId();
     const timestamp = new Date().toISOString();
 
+    // 1. Preserve documented readiness failure contracts (HTTP 503) strictly for trusted ReadinessException
+    if (exception instanceof ReadinessException) {
+      response.status(HttpStatus.SERVICE_UNAVAILABLE).json(exception.readinessPayload);
+      return;
+    }
+
+    // 2. Standardized HTTP exceptions (all other 4xx and 5xx exceptions)
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const resResponse = exception.getResponse();
-
-      // Preserve documented readiness failure contracts (HTTP 503) without altering shape
-      if (
-        status === HttpStatus.SERVICE_UNAVAILABLE &&
-        typeof resResponse === 'object' &&
-        resResponse !== null &&
-        'checks' in resResponse
-      ) {
-        response.status(status).json(resResponse);
-        return;
-      }
 
       let code = this.getErrorCode(exception, status);
       let message = exception.message;
@@ -44,7 +42,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
             const parts = msg.split(' ');
             return {
               field: parts[0],
-              message: msg,
+              message: SecretRedactor.redactString(msg),
             };
           });
         } else if (typeof resObj.message === 'string') {
@@ -56,7 +54,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         success: false,
         error: {
           code,
-          message,
+          message: SecretRedactor.redactString(message),
           ...(details ? { details } : {}),
         },
         meta: {

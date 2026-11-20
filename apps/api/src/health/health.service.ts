@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type {
   DetailedHealthResponse,
   LivenessResponse,
@@ -6,6 +6,7 @@ import type {
 } from '@careeros/contracts';
 import { PrismaService } from '../prisma/prisma.service';
 import { StructuredLogger } from '../common/logger/structured.logger';
+import { ReadinessException } from '../common/exceptions/readiness.exception';
 
 @Injectable()
 export class HealthService {
@@ -32,7 +33,7 @@ export class HealthService {
     // 1. Return recent probe result if within cache TTL
     if (this.lastProbeResult && now - this.lastProbeResult.timestamp < this.PROBE_CACHE_TTL_MS) {
       if (this.lastProbeResult.response.status === 'error') {
-        throw new ServiceUnavailableException(this.lastProbeResult.response);
+        throw new ReadinessException(this.lastProbeResult.response);
       }
       return this.lastProbeResult.response;
     }
@@ -65,7 +66,7 @@ export class HealthService {
           'HealthService',
         );
 
-        throw new ServiceUnavailableException(failureResponse);
+        throw new ReadinessException(failureResponse);
       });
 
     return this.inFlightProbe;
